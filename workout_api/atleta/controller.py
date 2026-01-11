@@ -1,3 +1,4 @@
+from fastapi import APIRouter, Query, status
 from datetime import datetime
 from uuid import uuid4
 from fastapi import APIRouter, Body, HTTPException, status
@@ -13,12 +14,28 @@ from sqlalchemy.future import select
 
 router = APIRouter()
 
-@router.post(
+@router.get(
     '/', 
-    summary='Criar um novo atleta',
-    status_code=status.HTTP_201_CREATED,
-    response_model=AtletaOut
+    summary='Consultar todos os Atletas',
+    status_code=status.HTTP_200_OK,
+    response_model=list[AtletaOut],
 )
+async def get(
+    db_session: DatabaseDependency,
+    nome: str = Query(None, description="Filtrar por nome do atleta"),
+    cpf: str = Query(None, description="Filtrar por CPF do atleta")
+) -> list[AtletaOut]:
+    
+    query = select(AtletaModel)
+    
+    if nome:
+        query = query.filter(AtletaModel.nome.icontains(nome))
+    if cpf:
+        query = query.filter(AtletaModel.cpf == cpf)
+    
+    athletes = await db_session.execute(query)
+    return athletes.scalars().all()
+    
 async def post(
     db_session: DatabaseDependency, 
     atleta_in: AtletaIn = Body(...)
